@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { DashboardLayout } from '@/layouts/DashboardLayout';
 import { LeadCard } from '@/components/LeadCard';
 import { LeadDetailsModal } from '@/components/LeadDetailsModal';
@@ -6,9 +6,7 @@ import { UpgradeModal } from '@/components/UpgradeModal';
 import { SkeletonLoader } from '@/components/SkeletonLoader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
-import { Slider } from '@/components/ui/slider';
+import { Badge } from '@/components/ui/badge';
 import {
   Select,
   SelectContent,
@@ -16,10 +14,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import { Lead, PlanType } from '@/types';
 import { 
   Search, 
-  Filter, 
   X, 
   RefreshCw, 
   Download,
@@ -28,8 +30,7 @@ import {
   MapPin,
   FileSpreadsheet,
   Lock,
-  ChevronDown,
-  ChevronUp
+  Sparkles,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -40,6 +41,20 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+
+// Mock CNAE data for autocomplete
+const CNAE_OPTIONS = [
+  { code: '8630-5/04', label: 'Atividade Odontológica' },
+  { code: '3250-7/06', label: 'Serviços de Prótese Dentária' },
+  { code: '6911-7/01', label: 'Advocacia Geral' },
+  { code: '6920-6/01', label: 'Atividades de Contabilidade' },
+  { code: '4781-4/00', label: 'Comércio Varejista de Artigos do Vestuário' },
+  { code: '5611-2/01', label: 'Restaurantes e Similares' },
+  { code: '4771-7/01', label: 'Comércio Varejista de Produtos Farmacêuticos' },
+  { code: '8630-5/03', label: 'Atividade Médica Ambulatorial' },
+  { code: '9602-5/01', label: 'Cabeleireiros, Manicure e Pedicure' },
+  { code: '4530-7/03', label: 'Comércio de Peças e Acessórios Automotivos' },
+];
 
 // Mock data
 const mockLeads: Lead[] = [
@@ -133,40 +148,73 @@ export default function SearchPage() {
   const [isUpgradeOpen, setIsUpgradeOpen] = useState(false);
   const [upgradeFeature, setUpgradeFeature] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [showFilters, setShowFilters] = useState(true);
+  const [hasSearched, setHasSearched] = useState(false);
   
-  // Filters
+  // Smart Search State
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isAutocompleteOpen, setIsAutocompleteOpen] = useState(false);
+  const [selectedCnaes, setSelectedCnaes] = useState<typeof CNAE_OPTIONS>([]);
+  const inputRef = useRef<HTMLInputElement>(null);
+  
+  // Quick Filters
   const [uf, setUf] = useState('');
   const [cidade, setCidade] = useState('');
-  const [bairro, setBairro] = useState('');
-  const [ramo, setRamo] = useState('');
-  const [capitalSocial, setCapitalSocial] = useState([0]);
-  const [onlyWhatsApp, setOnlyWhatsApp] = useState(false);
-  const [onlyEmail, setOnlyEmail] = useState(false);
-  const [excludeMEI, setExcludeMEI] = useState(false);
+  const [situacao, setSituacao] = useState('ativas');
+
+  // Filter CNAE options based on search query
+  const filteredCnaeOptions = CNAE_OPTIONS.filter(
+    option => 
+      !selectedCnaes.some(s => s.code === option.code) &&
+      (option.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
+       option.code.includes(searchQuery))
+  );
+
+  const handleSelectCnae = (cnae: typeof CNAE_OPTIONS[0]) => {
+    setSelectedCnaes(prev => [...prev, cnae]);
+    setSearchQuery('');
+    setIsAutocompleteOpen(false);
+    inputRef.current?.focus();
+  };
+
+  const handleRemoveCnae = (code: string) => {
+    setSelectedCnaes(prev => prev.filter(c => c.code !== code));
+  };
 
   const handleSearch = async () => {
+    if (selectedCnaes.length === 0) return;
+    
     setIsLoading(true);
+    setHasSearched(true);
+    
     // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 1500));
     
     let filteredLeads = [...mockLeads];
     
-    if (excludeMEI) {
-      filteredLeads = filteredLeads.filter(l => l.tipo !== 'MEI');
-    }
-    if (onlyWhatsApp) {
-      filteredLeads = filteredLeads.filter(l => l.hasWhatsApp);
-    }
-    if (onlyEmail) {
-      filteredLeads = filteredLeads.filter(l => l.hasEmail);
+    if (situacao === 'ativas') {
+      // In real app, filter by active status
     }
     if (uf) {
       filteredLeads = filteredLeads.filter(l => l.uf === uf);
     }
+    if (cidade) {
+      filteredLeads = filteredLeads.filter(l => 
+        l.cidade.toLowerCase().includes(cidade.toLowerCase())
+      );
+    }
     
     setLeads(filteredLeads);
     setIsLoading(false);
+  };
+
+  const handleClearAll = () => {
+    setSelectedCnaes([]);
+    setSearchQuery('');
+    setUf('');
+    setCidade('');
+    setSituacao('ativas');
+    setLeads([]);
+    setHasSearched(false);
   };
 
   const handleViewDetails = (lead: Lead) => {
@@ -179,24 +227,29 @@ export default function SearchPage() {
     setIsUpgradeOpen(true);
   };
 
-  const formatCapitalSocial = (value: number) => {
-    if (value === 0) return 'Qualquer';
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-      maximumFractionDigits: 0,
-    }).format(value);
-  };
+  // Close autocomplete when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (inputRef.current && !inputRef.current.contains(e.target as Node)) {
+        setIsAutocompleteOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   return (
     <DashboardLayout>
-      <div className="p-4 lg:p-6 space-y-4">
-        {/* Page Title */}
+      <div className="p-4 lg:p-6 space-y-6">
+        {/* Page Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Pesquisar Empresas</h1>
+            <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+              <Sparkles className="w-6 h-6 text-primary" />
+              Busca Inteligente
+            </h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Encontre leads B2B qualificados
+              Encontre empresas por ramo de atividade (CNAE)
             </p>
           </div>
           
@@ -213,160 +266,159 @@ export default function SearchPage() {
           </div>
         </div>
 
-        {/* Filters Section */}
-        <div className="card-corporate">
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            className="w-full flex items-center justify-between p-4 lg:hidden"
-          >
-            <div className="flex items-center gap-2">
-              <Filter className="w-4 h-4 text-primary" />
-              <span className="font-medium">Filtros de Busca</span>
+        {/* HERO SEARCH COMPONENT */}
+        <div className="card-elevated p-6 space-y-5">
+          {/* Main Search Input with Autocomplete */}
+          <div className="relative">
+            <label className="block text-sm font-semibold text-foreground mb-2">
+              Ramo de Atividade (CNAE)
+            </label>
+            
+            <div 
+              className={cn(
+                "min-h-14 px-4 py-3 rounded-xl border-2 bg-background transition-all duration-200 flex flex-wrap items-center gap-2",
+                isAutocompleteOpen ? "border-primary ring-4 ring-primary/10" : "border-border hover:border-primary/50"
+              )}
+            >
+              {/* Selected CNAE Tags */}
+              {selectedCnaes.map(cnae => (
+                <Badge 
+                  key={cnae.code}
+                  variant="secondary"
+                  className="h-8 pl-3 pr-2 gap-1.5 text-sm font-medium bg-primary/10 text-primary border-0 hover:bg-primary/20"
+                >
+                  {cnae.label}
+                  <button
+                    onClick={() => handleRemoveCnae(cnae.code)}
+                    className="ml-1 hover:bg-primary/20 rounded-full p-0.5 transition-colors"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </Badge>
+              ))}
+              
+              {/* Search Input */}
+              <div className="flex-1 min-w-[200px] relative">
+                <Search className="absolute left-0 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground pointer-events-none" />
+                <input
+                  ref={inputRef}
+                  type="text"
+                  placeholder={selectedCnaes.length === 0 ? "Digite o ramo (ex: Dentista, Advogado)..." : "Adicionar mais..."}
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    setIsAutocompleteOpen(true);
+                  }}
+                  onFocus={() => setIsAutocompleteOpen(true)}
+                  className="w-full pl-7 pr-2 py-1 bg-transparent border-0 outline-none text-foreground placeholder:text-muted-foreground"
+                />
+              </div>
             </div>
-            {showFilters ? (
-              <ChevronUp className="w-4 h-4 text-muted-foreground" />
-            ) : (
-              <ChevronDown className="w-4 h-4 text-muted-foreground" />
+
+            {/* Autocomplete Dropdown */}
+            {isAutocompleteOpen && searchQuery.length > 0 && filteredCnaeOptions.length > 0 && (
+              <div className="absolute z-50 w-full mt-2 bg-popover border border-border rounded-xl shadow-lg overflow-hidden animate-in fade-in-0 zoom-in-95 duration-200">
+                <div className="p-2 border-b border-border bg-muted/30">
+                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    Sugestões de CNAE
+                  </span>
+                </div>
+                <ul className="py-1 max-h-64 overflow-y-auto">
+                  {filteredCnaeOptions.map(option => (
+                    <li key={option.code}>
+                      <button
+                        onClick={() => handleSelectCnae(option)}
+                        className="w-full px-4 py-3 text-left hover:bg-accent/50 transition-colors flex items-center justify-between group"
+                      >
+                        <span className="font-medium text-foreground group-hover:text-primary transition-colors">
+                          {option.label}
+                        </span>
+                        <span className="text-xs text-muted-foreground font-mono bg-muted px-2 py-1 rounded">
+                          {option.code}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             )}
-          </button>
-          
-          <div className={cn(
-            'p-4 pt-0 lg:pt-4 space-y-4',
-            !showFilters && 'hidden lg:block'
-          )}>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">Estado (UF)</Label>
-                <Select value={uf || "all"} onValueChange={(value) => setUf(value === "all" ? "" : value)}>
-                  <SelectTrigger className="input-corporate">
-                    <SelectValue placeholder="Selecione..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos</SelectItem>
-                    {UF_LIST.map((state) => (
-                      <SelectItem key={state} value={state}>{state}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+          </div>
 
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">Cidade</Label>
-                <Input
-                  placeholder="Ex: São Paulo"
-                  value={cidade}
-                  onChange={(e) => setCidade(e.target.value)}
-                  className="input-corporate"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">Bairro</Label>
-                <Input
-                  placeholder="Ex: Pinheiros"
-                  value={bairro}
-                  onChange={(e) => setBairro(e.target.value)}
-                  className="input-corporate"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">Ramo/Atividade</Label>
-                <Input
-                  placeholder="Ex: Tecnologia"
-                  value={ramo}
-                  onChange={(e) => setRamo(e.target.value)}
-                  className="input-corporate"
-                />
-              </div>
+          {/* Quick Filters Row */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                Estado (UF)
+              </label>
+              <Select value={uf || "all"} onValueChange={(value) => setUf(value === "all" ? "" : value)}>
+                <SelectTrigger className="h-11 bg-background border-border">
+                  <SelectValue placeholder="Todos os estados" />
+                </SelectTrigger>
+                <SelectContent className="bg-popover border-border">
+                  <SelectItem value="all">Todos os estados</SelectItem>
+                  {UF_LIST.map((state) => (
+                    <SelectItem key={state} value={state}>{state}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">
-                Capital Social Mínimo: {formatCapitalSocial(capitalSocial[0])}
-              </Label>
-              <Slider
-                value={capitalSocial}
-                onValueChange={setCapitalSocial}
-                max={5000000}
-                step={50000}
-                className="py-2"
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                Cidade
+              </label>
+              <Input
+                placeholder="Buscar cidade..."
+                value={cidade}
+                onChange={(e) => setCidade(e.target.value)}
+                className="h-11 bg-background border-border"
               />
             </div>
 
-            <div className="flex flex-wrap gap-6">
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="whatsapp"
-                  checked={onlyWhatsApp}
-                  onCheckedChange={setOnlyWhatsApp}
-                />
-                <Label htmlFor="whatsapp" className="text-sm cursor-pointer flex items-center gap-1.5">
-                  <MessageCircle className="w-4 h-4 text-success" />
-                  Apenas com WhatsApp
-                </Label>
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="email"
-                  checked={onlyEmail}
-                  onCheckedChange={setOnlyEmail}
-                />
-                <Label htmlFor="email" className="text-sm cursor-pointer flex items-center gap-1.5">
-                  <Mail className="w-4 h-4 text-primary" />
-                  Apenas com E-mail
-                </Label>
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="mei"
-                  checked={excludeMEI}
-                  onCheckedChange={setExcludeMEI}
-                />
-                <Label htmlFor="mei" className="text-sm cursor-pointer">
-                  Excluir MEI
-                </Label>
-              </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                Situação
+              </label>
+              <Select value={situacao} onValueChange={setSituacao}>
+                <SelectTrigger className="h-11 bg-background border-border">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-popover border-border">
+                  <SelectItem value="ativas">Apenas Ativas</SelectItem>
+                  <SelectItem value="todas">Todas</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-3 pt-2">
+            <div className="flex items-end gap-2">
               <Button 
-                className="btn-corporate flex-1 sm:flex-none h-11 touch-target"
+                className="btn-corporate flex-1 h-11"
                 onClick={handleSearch}
-                disabled={isLoading}
+                disabled={isLoading || selectedCnaes.length === 0}
               >
                 {isLoading ? (
                   <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
                 ) : (
                   <Search className="w-4 h-4 mr-2" />
                 )}
-                Buscar Empresas
+                Buscar
               </Button>
               
-              <Button 
-                variant="outline" 
-                className="sm:flex-none h-11"
-                onClick={() => {
-                  setUf('');
-                  setCidade('');
-                  setBairro('');
-                  setRamo('');
-                  setCapitalSocial([0]);
-                  setOnlyWhatsApp(false);
-                  setOnlyEmail(false);
-                  setExcludeMEI(false);
-                }}
-              >
-                <X className="w-4 h-4 mr-2" />
-                Limpar Filtros
-              </Button>
+              {(selectedCnaes.length > 0 || uf || cidade) && (
+                <Button 
+                  variant="outline" 
+                  size="icon"
+                  className="h-11 w-11 shrink-0"
+                  onClick={handleClearAll}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Results */}
+        {/* Results Section */}
         {isLoading ? (
           <>
             {/* Mobile Skeleton */}
@@ -378,7 +430,7 @@ export default function SearchPage() {
               <SkeletonLoader variant="table-row" count={5} />
             </div>
           </>
-        ) : leads.length > 0 ? (
+        ) : hasSearched && leads.length > 0 ? (
           <>
             <div className="flex items-center justify-between">
               <p className="text-sm text-muted-foreground">
@@ -463,18 +515,41 @@ export default function SearchPage() {
               </Table>
             </div>
           </>
-        ) : (
+        ) : hasSearched && leads.length === 0 ? (
           <div className="card-corporate p-12 text-center">
             <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
               <Search className="w-8 h-8 text-muted-foreground" />
             </div>
             <h3 className="text-lg font-semibold text-foreground mb-2">
-              Busque por empresas
+              Nenhuma empresa encontrada
             </h3>
             <p className="text-sm text-muted-foreground max-w-md mx-auto">
-              Use os filtros acima para encontrar leads B2B qualificados. 
-              Você pode filtrar por localização, ramo de atividade, capital social e muito mais.
+              Tente ajustar os filtros ou selecionar um ramo de atividade diferente.
             </p>
+          </div>
+        ) : (
+          /* Empty State - No search performed yet */
+          <div className="card-corporate p-16 text-center">
+            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary/10 to-accent/10 flex items-center justify-center mx-auto mb-6">
+              <Search className="w-10 h-10 text-primary" />
+            </div>
+            <h3 className="text-xl font-semibold text-foreground mb-3">
+              Selecione um Ramo de Atividade
+            </h3>
+            <p className="text-muted-foreground max-w-md mx-auto leading-relaxed">
+              Digite o ramo de atividade desejado no campo acima para começar a prospectar empresas qualificadas.
+            </p>
+            <div className="mt-6 flex flex-wrap justify-center gap-2">
+              {CNAE_OPTIONS.slice(0, 4).map(cnae => (
+                <button
+                  key={cnae.code}
+                  onClick={() => handleSelectCnae(cnae)}
+                  className="px-4 py-2 rounded-full bg-muted hover:bg-primary/10 hover:text-primary text-sm font-medium text-muted-foreground transition-colors"
+                >
+                  {cnae.label}
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
@@ -499,8 +574,8 @@ export default function SearchPage() {
       <UpgradeModal
         open={isUpgradeOpen}
         onOpenChange={setIsUpgradeOpen}
-        currentPlan={mockUserPlan}
         feature={upgradeFeature}
+        currentPlan={mockUserPlan}
       />
     </DashboardLayout>
   );
