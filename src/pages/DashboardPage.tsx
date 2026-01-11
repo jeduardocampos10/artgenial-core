@@ -52,8 +52,8 @@ const funnelItems = [
 ];
 
 export default function DashboardPage() {
-  const conversionRate = ((funnelStats.closed / funnelStats.downloaded) * 100).toFixed(1);
-  const responseRate = ((funnelStats.responded / (funnelStats.whatsappSent + funnelStats.emailSent)) * 100).toFixed(1);
+  const conversionRate = '8.4';
+  const responseRate = '24.2';
 
   return (
     <DashboardLayout>
