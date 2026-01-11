@@ -9,7 +9,7 @@ import {
   BookOpen,
   Settings,
   LogOut,
-  Building2,
+  Sparkles,
   Zap
 } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
@@ -33,7 +33,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 const navItems = [
   { title: 'Conversas', url: '/conversations', icon: MessageSquare },
   { title: 'Flux CRM', url: '/crm', icon: Kanban },
-  { title: 'Meus Leads', url: '/leads', icon: Users },
+  { title: 'Contatos', url: '/leads', icon: Users },
   { title: 'Agentes', url: '/agents', icon: Bot },
   { title: 'Base de Conhecimento', url: '/knowledge', icon: Database },
   { title: 'Disparos', url: '/campaigns', icon: Megaphone, isNew: true },
@@ -68,12 +68,12 @@ export function AppSidebar({ user, creditsUsed }: AppSidebarProps) {
           collapsed && "justify-center"
         )}>
           <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-violet-500 to-blue-600 flex items-center justify-center flex-shrink-0">
-            <Zap className="w-5 h-5 text-white" />
+            <Sparkles className="w-5 h-5 text-white" />
           </div>
           {!collapsed && (
             <div className="flex-1 min-w-0">
-              <h1 className="font-bold text-lg text-foreground tracking-tight">CNPJ Master</h1>
-              <p className="text-[10px] text-muted-foreground">Plataforma de Leads B2B</p>
+              <h1 className="font-bold text-lg text-foreground tracking-tight">ArtGenial</h1>
+              <p className="text-[10px] text-muted-foreground">Inteligência de Leads B2B</p>
             </div>
           )}
         </div>
