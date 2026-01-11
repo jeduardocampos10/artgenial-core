@@ -10,7 +10,8 @@ import {
   BookOpen,
   Settings,
   LogOut,
-  Sparkles
+  Sparkles,
+  Search
 } from 'lucide-react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -34,7 +35,8 @@ const navItems = [
   { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
   { title: 'Conversas', url: '/conversations', icon: MessageSquare },
   { title: 'Flux CRM', url: '/crm', icon: Kanban },
-  { title: 'Contatos', url: '/leads', icon: Users },
+  { title: 'Pesquisa', url: '/pesquisa', icon: Search },
+  { title: 'Meus Leads', url: '/leads', icon: Users },
   { title: 'Agentes', url: '/agents', icon: Bot },
   { title: 'Base de Conhecimento', url: '/knowledge', icon: Database },
   { title: 'Disparos', url: '/campaigns', icon: Megaphone, isNew: true },
