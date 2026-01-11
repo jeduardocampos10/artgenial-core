@@ -1,4 +1,5 @@
 import { 
+  LayoutDashboard,
   MessageSquare,
   Kanban,
   Users,
@@ -9,8 +10,7 @@ import {
   BookOpen,
   Settings,
   LogOut,
-  Sparkles,
-  Zap
+  Sparkles
 } from 'lucide-react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -31,13 +31,14 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 const navItems = [
+  { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
   { title: 'Conversas', url: '/conversations', icon: MessageSquare },
   { title: 'Flux CRM', url: '/crm', icon: Kanban },
   { title: 'Contatos', url: '/leads', icon: Users },
   { title: 'Agentes', url: '/agents', icon: Bot },
   { title: 'Base de Conhecimento', url: '/knowledge', icon: Database },
   { title: 'Disparos', url: '/campaigns', icon: Megaphone, isNew: true },
-  { title: 'Métricas', url: '/dashboard', icon: LineChart },
+  { title: 'Métricas', url: '/metrics', icon: LineChart },
   { title: 'Documentação', url: '/docs', icon: BookOpen },
   { title: 'Configurações', url: '/settings', icon: Settings },
 ];
