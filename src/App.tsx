@@ -27,6 +27,13 @@ const App = () => (
           <Route path="/leads" element={<LeadsPage />} />
           <Route path="/integrations" element={<IntegrationsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
+          {/* New routes for updated sidebar */}
+          <Route path="/conversations" element={<DashboardPage />} />
+          <Route path="/crm" element={<DashboardPage />} />
+          <Route path="/agents" element={<DashboardPage />} />
+          <Route path="/knowledge" element={<DashboardPage />} />
+          <Route path="/campaigns" element={<DashboardPage />} />
+          <Route path="/docs" element={<DashboardPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
