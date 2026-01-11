@@ -17,7 +17,7 @@ const mockUser = {
   plan: 'gold' as PlanType,
 };
 
-const mockCreditsUsed = 1230;
+const mockCreditsUsed = 100;
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   return (
