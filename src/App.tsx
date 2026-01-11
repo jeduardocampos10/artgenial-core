@@ -9,6 +9,12 @@ import SearchPage from "./pages/SearchPage";
 import LeadsPage from "./pages/LeadsPage";
 import IntegrationsPage from "./pages/IntegrationsPage";
 import SettingsPage from "./pages/SettingsPage";
+import FluxCRMPage from "./pages/FluxCRMPage";
+import AgentsPage from "./pages/AgentsPage";
+import KnowledgeBasePage from "./pages/KnowledgeBasePage";
+import CampaignsPage from "./pages/CampaignsPage";
+import ConversationsPage from "./pages/ConversationsPage";
+import DocsPage from "./pages/DocsPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -27,13 +33,12 @@ const App = () => (
           <Route path="/leads" element={<LeadsPage />} />
           <Route path="/integrations" element={<IntegrationsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
-          {/* New routes for updated sidebar */}
-          <Route path="/conversations" element={<DashboardPage />} />
-          <Route path="/crm" element={<DashboardPage />} />
-          <Route path="/agents" element={<DashboardPage />} />
-          <Route path="/knowledge" element={<DashboardPage />} />
-          <Route path="/campaigns" element={<DashboardPage />} />
-          <Route path="/docs" element={<DashboardPage />} />
+          <Route path="/conversations" element={<ConversationsPage />} />
+          <Route path="/crm" element={<FluxCRMPage />} />
+          <Route path="/agents" element={<AgentsPage />} />
+          <Route path="/knowledge" element={<KnowledgeBasePage />} />
+          <Route path="/campaigns" element={<CampaignsPage />} />
+          <Route path="/docs" element={<DocsPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
