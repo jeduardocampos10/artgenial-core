@@ -60,7 +60,7 @@ export default function DocsPage() {
             <div>
               <h2 className="text-xl lg:text-2xl font-bold mb-2">Bem-vindo à Documentação</h2>
               <p className="text-white/80 max-w-xl">
-                Aqui você encontra guias, tutoriais e respostas para todas as suas dúvidas sobre o CNPJ Master.
+                Aqui você encontra guias, tutoriais e respostas para todas as suas dúvidas sobre o ArtGenial.
                 Explore os recursos abaixo ou use a busca para encontrar o que precisa.
               </p>
             </div>

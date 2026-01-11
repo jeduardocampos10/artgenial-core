@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Building2, Mail, Lock, Eye, EyeOff, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { Sparkles, Mail, Lock, Eye, EyeOff, ArrowRight, CheckCircle2 } from 'lucide-react';
 import saoPauloBg from '@/assets/sao-paulo-bg.jpg';
 
 export default function LoginPage() {
@@ -40,11 +40,11 @@ export default function LoginPage() {
         <div className="card-elevated p-8 animate-fade-in">
           {/* Logo */}
           <div className="flex flex-col items-center mb-8">
-            <div className="w-16 h-16 rounded-xl bg-primary flex items-center justify-center mb-4 shadow-lg">
-              <Building2 className="w-9 h-9 text-primary-foreground" />
+            <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-violet-500 to-blue-600 flex items-center justify-center mb-4 shadow-lg">
+              <Sparkles className="w-9 h-9 text-white" />
             </div>
-            <h1 className="text-2xl font-bold text-foreground tracking-tight">CNPJ Master</h1>
-            <p className="text-sm text-muted-foreground mt-1">Geração de Leads B2B Inteligente</p>
+            <h1 className="text-2xl font-bold text-foreground tracking-tight">ArtGenial</h1>
+            <p className="text-sm text-muted-foreground mt-1">Inteligência de Leads B2B</p>
           </div>
 
           {/* Form */}
@@ -126,9 +126,9 @@ export default function LoginPage() {
             <div className="absolute inset-0 flex items-center">
               <div className="w-full border-t border-border" />
             </div>
-            <div className="relative flex justify-center">
+          <div className="relative flex justify-center">
               <span className="bg-card px-3 text-xs text-muted-foreground">
-                Novo no CNPJ Master?
+                Novo no ArtGenial?
               </span>
             </div>
           </div>
