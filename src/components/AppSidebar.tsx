@@ -122,14 +122,14 @@ export function AppSidebar({ user, creditsUsed }: AppSidebarProps) {
       <SidebarFooter className="p-4 border-t border-sidebar-border">
         {/* Plan Credits Display */}
         {!collapsed && (
-          <div className="mb-4 p-3 rounded-lg bg-muted/50 space-y-2">
+        <div className="mb-4 p-3 rounded-lg bg-muted/50 space-y-2">
             <div className="flex items-center justify-between text-xs">
               <span className="text-muted-foreground">Créditos:</span>
-              <span className="font-semibold text-foreground">{creditsUsed} / {maxCredits}</span>
+              <span className="font-semibold text-foreground">1230 / 3000</span>
             </div>
             <div className="flex items-center justify-between text-xs">
               <span className="text-muted-foreground">Agentes:</span>
-              <span className="font-semibold text-foreground">0 / 1</span>
+              <span className="font-semibold text-foreground">7 / 20</span>
             </div>
             <div className="h-1.5 rounded-full bg-muted overflow-hidden">
               <div 
