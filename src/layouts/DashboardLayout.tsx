@@ -11,8 +11,8 @@ interface DashboardLayoutProps {
 // Mock user data - in a real app, this would come from auth context
 const mockUser = {
   id: '1',
-  name: 'João Silva',
-  email: 'joao@empresa.com.br',
+  name: 'Jorge Eduardo',
+  email: 'jorge@empresa.com.br',
   avatarUrl: '',
   plan: 'gold' as PlanType,
 };
