@@ -1,25 +1,23 @@
 import { useState } from 'react';
 import { DashboardLayout } from '@/layouts/DashboardLayout';
-import { LeadCard } from '@/components/LeadCard';
 import { LeadDetailsModal } from '@/components/LeadDetailsModal';
-import { SkeletonLoader } from '@/components/SkeletonLoader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Lead } from '@/types';
 import { 
   Search, 
   Filter,
   Download,
-  MessageCircle,
-  Mail,
-  MapPin,
+  Send,
+  Plus,
   Users,
-  Inbox,
-  CheckCircle2,
-  Clock,
-  XCircle
+  MoreHorizontal,
+  ChevronLeft,
+  ChevronRight,
+  Phone,
+  Mail
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import {
   Table,
   TableBody,
@@ -29,12 +27,11 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 // Mock saved leads
 const mockSavedLeads: Lead[] = [
@@ -118,32 +115,25 @@ const mockSavedLeads: Lead[] = [
   },
 ];
 
-const statusConfig = {
-  downloaded: { label: 'Baixado', icon: Download, color: 'text-primary bg-primary/10' },
-  whatsapp_sent: { label: 'WhatsApp Enviado', icon: MessageCircle, color: 'text-success bg-success/10' },
-  email_sent: { label: 'Email Enviado', icon: Mail, color: 'text-blue-600 bg-blue-100' },
-  responded: { label: 'Respondido', icon: CheckCircle2, color: 'text-purple-600 bg-purple-100' },
-  no_response: { label: 'Sem Resposta', icon: Clock, color: 'text-orange-600 bg-orange-100' },
-  closed: { label: 'Venda Fechada', icon: XCircle, color: 'text-success bg-success/10' },
-};
-
 export default function LeadsPage() {
   const [leads] = useState<Lead[]>(mockSavedLeads);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [isLoading] = useState(false);
+  const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
+  const [currentPage] = useState(1);
+  const totalPages = 1;
 
   const filteredLeads = leads.filter(lead => {
-    const matchesSearch = 
-      lead.nomeFantasia.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      lead.razaoSocial.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      lead.cnpj.includes(searchQuery);
-    
-    const matchesStatus = statusFilter === 'all' || lead.status === statusFilter;
-    
-    return matchesSearch && matchesStatus;
+    const query = searchQuery.toLowerCase();
+    return (
+      lead.nomeFantasia.toLowerCase().includes(query) ||
+      lead.razaoSocial.toLowerCase().includes(query) ||
+      lead.cnpj.includes(query) ||
+      lead.email?.toLowerCase().includes(query) ||
+      lead.whatsapp?.includes(query) ||
+      lead.cidade.toLowerCase().includes(query)
+    );
   });
 
   const handleViewDetails = (lead: Lead) => {
@@ -151,215 +141,209 @@ export default function LeadsPage() {
     setIsDetailsOpen(true);
   };
 
-  const getStatusBadge = (status?: string) => {
-    if (!status) return null;
-    const config = statusConfig[status as keyof typeof statusConfig];
-    if (!config) return null;
-    
-    const Icon = config.icon;
-    return (
-      <span className={cn('inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium', config.color)}>
-        <Icon className="w-3 h-3" />
-        {config.label}
-      </span>
-    );
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedLeads(filteredLeads.map(lead => lead.id));
+    } else {
+      setSelectedLeads([]);
+    }
   };
+
+  const handleSelectLead = (leadId: string, checked: boolean) => {
+    if (checked) {
+      setSelectedLeads(prev => [...prev, leadId]);
+    } else {
+      setSelectedLeads(prev => prev.filter(id => id !== leadId));
+    }
+  };
+
+  const isAllSelected = filteredLeads.length > 0 && selectedLeads.length === filteredLeads.length;
 
   return (
     <DashboardLayout>
-      <div className="p-4 lg:p-6 space-y-4">
-        {/* Page Title */}
+      <div className="p-4 lg:p-6 space-y-6">
+        {/* Header Section */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">Meus Leads</h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Gerencie seus leads salvos
-            </p>
+          <h1 className="text-2xl lg:text-3xl font-bold text-foreground">Meus Leads</h1>
+          
+          {/* Summary Card */}
+          <div className="inline-flex items-center gap-3 px-4 py-2.5 bg-card rounded-xl border border-border shadow-sm">
+            <div className="w-10 h-10 rounded-full bg-violet-100 dark:bg-violet-500/20 flex items-center justify-center">
+              <Users className="w-5 h-5 text-violet-600 dark:text-violet-400" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-foreground">{leads.length}</p>
+              <p className="text-xs text-muted-foreground">Leads</p>
+            </div>
           </div>
-          <Button className="btn-corporate">
-            <Download className="w-4 h-4 mr-2" />
-            Exportar Todos
+        </div>
+
+        {/* Action Toolbar */}
+        <div className="flex flex-wrap items-center gap-3">
+          <Button variant="outline" className="gap-2">
+            <Filter className="w-4 h-4" />
+            Filtros
+          </Button>
+          <Button variant="outline" className="gap-2">
+            <Download className="w-4 h-4" />
+            Exportar
+          </Button>
+          <Button variant="outline" className="gap-2">
+            <Send className="w-4 h-4" />
+            Disparar p/ Filtrados
+          </Button>
+          <Button className="gap-2 bg-violet-600 hover:bg-violet-700 text-white">
+            <Plus className="w-4 h-4" />
+            Adicionar Lead
           </Button>
         </div>
 
-        {/* Filters */}
-        <div className="card-corporate p-4">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar por nome, CNPJ..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="input-corporate pl-10"
-              />
-            </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="input-corporate sm:w-48">
-                <Filter className="w-4 h-4 mr-2 text-muted-foreground" />
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os Status</SelectItem>
-                <SelectItem value="downloaded">Baixados</SelectItem>
-                <SelectItem value="whatsapp_sent">WhatsApp Enviado</SelectItem>
-                <SelectItem value="email_sent">Email Enviado</SelectItem>
-                <SelectItem value="responded">Respondidos</SelectItem>
-                <SelectItem value="no_response">Sem Resposta</SelectItem>
-                <SelectItem value="closed">Vendas Fechadas</SelectItem>
-              </SelectContent>
-            </Select>
+        {/* Search Bar */}
+        <div className="relative">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+          <Input
+            placeholder="Buscar leads (email, telefone, nome, empresa)..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-12 h-12 text-base bg-card border-border"
+          />
+        </div>
+
+        {/* Data Table */}
+        <div className="bg-card rounded-xl border border-border overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/30 hover:bg-muted/30">
+                <TableHead className="w-12">
+                  <Checkbox 
+                    checked={isAllSelected}
+                    onCheckedChange={handleSelectAll}
+                    aria-label="Selecionar todos"
+                  />
+                </TableHead>
+                <TableHead className="font-semibold text-foreground">Empresa</TableHead>
+                <TableHead className="font-semibold text-foreground">Nome Fantasia</TableHead>
+                <TableHead className="font-semibold text-foreground hidden md:table-cell">Cidade</TableHead>
+                <TableHead className="font-semibold text-foreground hidden lg:table-cell">Telefone</TableHead>
+                <TableHead className="font-semibold text-foreground hidden lg:table-cell">Email</TableHead>
+                <TableHead className="font-semibold text-foreground text-right">Ações</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredLeads.length > 0 ? (
+                filteredLeads.map((lead) => (
+                  <TableRow 
+                    key={lead.id} 
+                    className="hover:bg-muted/20 cursor-pointer"
+                    onClick={() => handleViewDetails(lead)}
+                  >
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      <Checkbox 
+                        checked={selectedLeads.includes(lead.id)}
+                        onCheckedChange={(checked) => handleSelectLead(lead.id, checked as boolean)}
+                        aria-label={`Selecionar ${lead.nomeFantasia}`}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <div>
+                        <p className="font-medium text-foreground">{lead.razaoSocial}</p>
+                        <p className="text-xs text-muted-foreground font-mono">{lead.cnpj}</p>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <span className="font-medium">{lead.nomeFantasia}</span>
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      <span className="text-muted-foreground">{lead.cidade}, {lead.uf}</span>
+                    </TableCell>
+                    <TableCell className="hidden lg:table-cell">
+                      {lead.whatsapp ? (
+                        <div className="flex items-center gap-2 text-sm">
+                          <Phone className="w-3.5 h-3.5 text-success" />
+                          <span>{lead.whatsapp}</span>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="hidden lg:table-cell">
+                      {lead.email ? (
+                        <div className="flex items-center gap-2 text-sm">
+                          <Mail className="w-3.5 h-3.5 text-primary" />
+                          <span className="truncate max-w-[180px]">{lead.email}</span>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <MoreHorizontal className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => handleViewDetails(lead)}>
+                            Ver detalhes
+                          </DropdownMenuItem>
+                          <DropdownMenuItem>Enviar WhatsApp</DropdownMenuItem>
+                          <DropdownMenuItem>Enviar Email</DropdownMenuItem>
+                          <DropdownMenuItem className="text-destructive">Remover</DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={7} className="h-32 text-center">
+                    <div className="flex flex-col items-center justify-center text-muted-foreground">
+                      <Users className="w-10 h-10 mb-2 opacity-40" />
+                      <p className="font-medium">Nenhum lead encontrado</p>
+                      <p className="text-sm">Tente ajustar sua busca ou adicione novos leads.</p>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+
+          {/* Pagination */}
+          <div className="flex items-center justify-center gap-4 py-4 border-t border-border">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              disabled={currentPage === 1}
+              className="gap-1"
+            >
+              <ChevronLeft className="w-4 h-4" />
+              Anterior
+            </Button>
+            <span className="text-sm text-muted-foreground">
+              Página <strong className="text-foreground">{currentPage}</strong> de <strong className="text-foreground">{totalPages}</strong>
+            </span>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              disabled={currentPage === totalPages}
+              className="gap-1"
+            >
+              Próxima
+              <ChevronRight className="w-4 h-4" />
+            </Button>
           </div>
         </div>
 
-        {/* Results */}
-        {isLoading ? (
-          <>
-            <div className="lg:hidden">
-              <SkeletonLoader variant="lead-card" count={3} />
-            </div>
-            <div className="hidden lg:block card-corporate overflow-hidden">
-              <SkeletonLoader variant="table-row" count={5} />
-            </div>
-          </>
-        ) : filteredLeads.length > 0 ? (
-          <>
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-muted-foreground">
-                <strong className="text-foreground">{filteredLeads.length}</strong> leads encontrados
-              </p>
-            </div>
-
-            {/* Mobile: Lead Cards */}
-            <div className="lg:hidden space-y-3">
-              {filteredLeads.map((lead) => (
-                <div key={lead.id} className="card-corporate p-4 space-y-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-foreground truncate">
-                        {lead.nomeFantasia || lead.razaoSocial}
-                      </h3>
-                      <p className="text-xs text-muted-foreground truncate mt-0.5">
-                        {lead.razaoSocial}
-                      </p>
-                    </div>
-                    {getStatusBadge(lead.status)}
-                  </div>
-
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <MapPin className="w-3.5 h-3.5" />
-                    <span>{lead.cidade}, {lead.uf}</span>
-                  </div>
-
-                  <div className="flex items-center justify-between pt-2 border-t border-border/50">
-                    <div className="flex items-center gap-3">
-                      <MessageCircle 
-                        className={cn(
-                          'w-4 h-4',
-                          lead.hasWhatsApp ? 'text-success' : 'text-muted-foreground/40'
-                        )} 
-                      />
-                      <Mail 
-                        className={cn(
-                          'w-4 h-4',
-                          lead.hasEmail ? 'text-primary' : 'text-muted-foreground/40'
-                        )} 
-                      />
-                    </div>
-                    
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      className="text-primary"
-                      onClick={() => handleViewDetails(lead)}
-                    >
-                      Ver Detalhes
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Desktop: Data Table */}
-            <div className="hidden lg:block card-corporate overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/50">
-                    <TableHead className="font-semibold">CNPJ</TableHead>
-                    <TableHead className="font-semibold">Nome Fantasia</TableHead>
-                    <TableHead className="font-semibold">Cidade</TableHead>
-                    <TableHead className="font-semibold">Contatos</TableHead>
-                    <TableHead className="font-semibold">Status</TableHead>
-                    <TableHead className="font-semibold text-right">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredLeads.map((lead) => (
-                    <TableRow key={lead.id} className="hover:bg-muted/30">
-                      <TableCell className="font-mono text-sm">{lead.cnpj}</TableCell>
-                      <TableCell className="font-medium">{lead.nomeFantasia}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1.5">
-                          <MapPin className="w-3.5 h-3.5 text-muted-foreground" />
-                          {lead.cidade}, {lead.uf}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <MessageCircle 
-                            className={cn(
-                              'w-4 h-4',
-                              lead.hasWhatsApp ? 'text-success' : 'text-muted-foreground/40'
-                            )} 
-                          />
-                          <Mail 
-                            className={cn(
-                              'w-4 h-4',
-                              lead.hasEmail ? 'text-primary' : 'text-muted-foreground/40'
-                            )} 
-                          />
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {getStatusBadge(lead.status)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          className="text-primary"
-                          onClick={() => handleViewDetails(lead)}
-                        >
-                          Ver Detalhes
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </>
-        ) : (
-          <div className="card-corporate p-12 text-center">
-            <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
-              {searchQuery || statusFilter !== 'all' ? (
-                <Inbox className="w-8 h-8 text-muted-foreground" />
-              ) : (
-                <Users className="w-8 h-8 text-muted-foreground" />
-              )}
-            </div>
-            <h3 className="text-lg font-semibold text-foreground mb-2">
-              {searchQuery || statusFilter !== 'all' 
-                ? 'Nenhum lead encontrado'
-                : 'Nenhum lead salvo ainda'
-              }
-            </h3>
-            <p className="text-sm text-muted-foreground max-w-md mx-auto">
-              {searchQuery || statusFilter !== 'all'
-                ? 'Tente ajustar os filtros de busca.'
-                : 'Faça uma pesquisa e baixe empresas para começar a gerenciar seus leads.'
-              }
-            </p>
+        {/* Selected count info */}
+        {selectedLeads.length > 0 && (
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-foreground text-background px-6 py-3 rounded-full shadow-lg flex items-center gap-4 z-50">
+            <span className="text-sm font-medium">
+              {selectedLeads.length} lead{selectedLeads.length > 1 ? 's' : ''} selecionado{selectedLeads.length > 1 ? 's' : ''}
+            </span>
+            <Button size="sm" variant="secondary" className="h-8">
+              Disparar
+            </Button>
           </div>
         )}
       </div>
