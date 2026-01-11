@@ -12,7 +12,7 @@ import {
   LogOut,
   Sparkles
 } from 'lucide-react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { PlanBadge } from './PlanBadge';
 import { PlanType, PLAN_CONFIGS } from '@/types';
@@ -56,10 +56,16 @@ interface AppSidebarProps {
 export function AppSidebar({ user, creditsUsed }: AppSidebarProps) {
   const { state } = useSidebar();
   const location = useLocation();
+  const navigate = useNavigate();
   const collapsed = state === 'collapsed';
 
   const planConfig = PLAN_CONFIGS[user.plan];
   const maxCredits = planConfig.searchesPerDay === 'unlimited' ? '∞' : planConfig.searchesPerDay;
+
+  const handleLogout = () => {
+    // In a real app, this would clear auth tokens/session
+    navigate('/login');
+  };
 
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
@@ -156,12 +162,16 @@ export function AppSidebar({ user, creditsUsed }: AppSidebarProps) {
             </div>
           )}
         </div>
-        {!collapsed && (
-          <button className="sidebar-link mt-2 text-muted-foreground hover:text-destructive w-full">
-            <LogOut className="w-4 h-4" />
-            <span>Sair</span>
-          </button>
-        )}
+        <button 
+          onClick={handleLogout}
+          className={cn(
+            "sidebar-link mt-2 text-muted-foreground hover:text-destructive w-full",
+            collapsed && "justify-center"
+          )}
+        >
+          <LogOut className="w-4 h-4" />
+          {!collapsed && <span>Sair</span>}
+        </button>
       </SidebarFooter>
     </Sidebar>
   );
