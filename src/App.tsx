@@ -15,6 +15,7 @@ import KnowledgeBasePage from "./pages/KnowledgeBasePage";
 import CampaignsPage from "./pages/CampaignsPage";
 import ConversationsPage from "./pages/ConversationsPage";
 import DocsPage from "./pages/DocsPage";
+import MetricsPage from "./pages/MetricsPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -26,7 +27,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Navigate to="/login" replace />} />
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/search" element={<SearchPage />} />
@@ -39,6 +40,7 @@ const App = () => (
           <Route path="/knowledge" element={<KnowledgeBasePage />} />
           <Route path="/campaigns" element={<CampaignsPage />} />
           <Route path="/docs" element={<DocsPage />} />
+          <Route path="/metrics" element={<MetricsPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
