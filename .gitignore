@@ -1,4 +1,26 @@
-# Logs
+# ===========================
+# 🐍 BACKEND (Python & Dados)
+# ===========================
+__pycache__/
+*.pyc
+venv/
+.venv/
+.env             
+BackEnd/.env     
+
+# Pastas de trabalho local (Seus ETLs e SQLs)
+sql_docs/
+scripts_etl/
+
+# ===========================
+# 🎨 FRONTEND (Lovable/Node)
+# ===========================
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# Logs de erro do Node
 logs
 *.log
 npm-debug.log*
@@ -7,16 +29,13 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-*.local
-
-# Editor directories and files
+# ===========================
+# ⚙️ SISTEMA & IDE (VS Code, Mac, Windows)
+# ===========================
+.DS_Store
 .vscode/*
 !.vscode/extensions.json
 .idea
-.DS_Store
 *.suo
 *.ntvs*
 *.njsproj
