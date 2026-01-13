@@ -1,4 +1,5 @@
 import os
+import re # Importamos o Regex para limpar os números
 import clickhouse_connect
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -7,44 +8,34 @@ from pydantic import BaseModel
 from typing import List, Optional
 from dotenv import load_dotenv
 
-# 1. Carrega variáveis de ambiente
-# Nota: No Render, as variáveis são configuradas no painel deles, não no arquivo .env
 load_dotenv()
 
 app = FastAPI(
     title="ArtGenial API", 
-    version="2.0.0",
-    docs_url=None, # 🔒 ESCONDE a documentação automática em produção (opcional)
+    version="2.1.0", # Versão atualizada com suporte a Multi-CNAE
+    docs_url=None,
     redoc_url=None
 )
 
-# 2. MASCARAMENTO E SEGURANÇA (Camada Render) 🛡️
-
-# A. Remove o cabeçalho 'Server' para não revelar que é Python/Uvicorn
+# --- SEGURANÇA E MIDDLEWARES ---
 @app.middleware("http")
 async def remove_server_header(request: Request, call_next):
     response = await call_next(request)
     response.headers["Server"] = "ArtGenial-Secure-Gateway" 
     return response
 
-# B. Trusted Host: Garante que só acessam pelo domínio correto (Evita Host Header Injection)
-# O "*" libera tudo agora para testes, mas no futuro colocaremos "seusite.com"
-app.add_middleware(
-    TrustedHostMiddleware, 
-    allowed_hosts=["*"] 
-)
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=["*"])
 
-# C. CORS (Quem pode chamar a API?)
 origins = os.getenv("ALLOWED_ORIGINS", "*").split(",")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["GET"], # Só leitura permitida
+    allow_methods=["GET"],
     allow_headers=["*"],
 )
 
-# 3. Conexão com o Banco (A Mesma Lógica Robusta)
+# --- CONEXÃO COM O BANCO ---
 def get_db_client():
     try:
         return clickhouse_connect.get_client(
@@ -58,7 +49,6 @@ def get_db_client():
         )
     except Exception as e:
         print(f"🚨 ERRO CRÍTICO DE CONEXÃO: {e}")
-        # Nunca devolva o erro técnico exato para o usuário
         raise HTTPException(status_code=500, detail="Serviço indisponível temporariamente.")
 
 # --- MODELOS ---
@@ -82,13 +72,12 @@ class CnaeResponse(BaseModel):
 
 @app.get("/")
 def health_check():
-    # Resposta genérica para não dar pistas
-    return {"status": "active"} 
+    return {"status": "active", "mode": "production"} 
 
 @app.get("/cnaes", response_model=List[CnaeResponse])
 def buscar_cnaes(q: str = Query(..., min_length=3)):
     client = get_db_client()
-    # SQL INJECTION PROTECTION: O uso de %(termo)s blinda a query
+    # Busca CNAE pelo nome (descrição)
     query = """
     SELECT codigo, descricao 
     FROM cnaes 
@@ -100,7 +89,8 @@ def buscar_cnaes(q: str = Query(..., min_length=3)):
 
 @app.get("/empresas", response_model=List[EmpresaResponse])
 def buscar_empresas(
-    cnae: Optional[str] = None,
+    # AGORA ACEITA UMA LISTA DE CNAES (ex: ?cnaes=123&cnaes=456)
+    cnaes: Optional[List[str]] = Query(None), 
     cidade: Optional[str] = None,
     uf: Optional[str] = None,
     bairro: Optional[str] = None,
@@ -111,20 +101,29 @@ def buscar_empresas(
     limit = 50
     offset = (pagina - 1) * limit
     
+    # Começa filtrando apenas empresas ATIVAS
     conditions = ["est.situacao_cadastral = '02'"]
     params = {}
+
+    # 1. TRATAMENTO INTELIGENTE DOS CNAES
+    if cnaes:
+        # Limpa cada CNAE da lista (remove traço, barra, ponto)
+        lista_limpa = [re.sub(r'\D', '', c) for c in cnaes]
+        # Remove vazios
+        lista_limpa = [c for c in lista_limpa if c]
+        
+        if lista_limpa:
+            # Usa o operador IN para buscar QUALQUER um dos selecionados
+            conditions.append("est.cnae_fiscal_principal IN %(cnaes_lista)s")
+            params['cnaes_lista'] = lista_limpa
 
     if uf:
         conditions.append("est.uf = %(uf)s")
         params['uf'] = uf.upper()
     
     if bairro:
-        conditions.append("est.bairro = %(bairro)s")
-        params['bairro'] = bairro.upper()
-
-    if cnae:
-        conditions.append("est.cnae_fiscal_principal = %(cnae)s")
-        params['cnae'] = cnae
+        conditions.append("est.bairro ILIKE %(bairro)s")
+        params['bairro'] = f"%{bairro}%"
         
     if cidade:
         conditions.append("mun.descricao ILIKE %(cidade)s")
@@ -136,6 +135,7 @@ def buscar_empresas(
 
     where_clause = " AND ".join(conditions)
     
+    # Query Otimizada
     sql = f"""
     SELECT 
         emp.razao_social,
@@ -162,6 +162,7 @@ def buscar_empresas(
         lista_empresas = []
         for row in result.result_rows:
             fone = row[8]
+            # Formatação visual do telefone
             if fone == "() " or fone == "()": fone = "Não informado"
 
             lista_empresas.append({
@@ -180,9 +181,8 @@ def buscar_empresas(
 
     except Exception as e:
         print(f"Erro interno logado: {e}")
-        raise HTTPException(status_code=500, detail="Erro interno.")
+        raise HTTPException(status_code=500, detail="Erro ao processar busca.")
 
 if __name__ == "__main__":
     import uvicorn
-    # Apenas para teste local. No Render, o comando de start será outro.
     uvicorn.run(app, host="0.0.0.0", port=8000)

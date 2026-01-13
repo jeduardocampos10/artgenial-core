@@ -1,0 +1,13 @@
+GitHub ➡️ Seu VS Code: NÃO é automático. Você precisa "puxar" as novidades.
+
+Sempre que mexer no Lovable, antes de trabalhar no VS Code, rode:
+
+ 1 - git pull origin main.
+ 2 - npm run build
+ 3 - Jogar na Hostinger /app
+Seu VS Code ➡️ Hostinger: NÃO é automático.
+
+
+Você sempre terá que rodar npm run build e arrastar a pasta dist para a Hostinger manualmente (a não ser que configuremos uma automação avançada no futuro).
+
+⚠️ ALERTA DE OURO: O Lovable pode sobrescrever nossas configurações manuais (como o base: "/app/" no vite.config.ts ou o basename no App.tsx).
