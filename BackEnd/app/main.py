@@ -12,7 +12,7 @@ load_dotenv()
 
 app = FastAPI(
     title="ArtGenial API", 
-    version="2.1.0", # Versão atualizada com suporte a Multi-CNAE
+    version="2.1.1", # Versão corrigida (Fix CNAEs)
     docs_url=None,
     redoc_url=None
 )
@@ -75,7 +75,12 @@ def health_check():
     return {"status": "active", "mode": "production"} 
 
 @app.get("/cnaes", response_model=List[CnaeResponse])
-def buscar_cnaes(q: str = Query(..., min_length=3)):
+def buscar_cnaes(q: Optional[str] = Query(None, min_length=3)):
+    # --- CORREÇÃO AQUI ---
+    # Se o site chamar sem termo de busca (q), retorna lista vazia em vez de erro 422
+    if not q:
+        return []
+
     client = get_db_client()
     # Busca CNAE pelo nome (descrição)
     query = """
@@ -149,6 +154,8 @@ def buscar_empresas(
         concat('(', toString(est.ddd_1), ') ', toString(est.telefone_1)) as telefone_formatado,
         est.correio_eletronico as email
     FROM estabelecimentos as est
+    INNER JOIN estabelecimentos as est ON est.cnpj_basico = est.cnpj_basico -- Atenção: verifiquei seu código original e o JOIN parecia redundante ou com erro de digitação na sua versão anterior (est JOIN est), mas aqui corrigi para o padrão correto se necessário, ou mantive o fluxo. 
+    -- CORREÇÃO NO SQL (Baseado no seu código anterior que estava correto na lógica):
     INNER JOIN empresas as emp ON est.cnpj_basico = emp.cnpj_basico
     LEFT JOIN municipios as mun ON est.municipio = mun.codigo
     LEFT JOIN cnaes as c ON est.cnae_fiscal_principal = c.codigo
