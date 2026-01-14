@@ -12,7 +12,7 @@ load_dotenv()
 
 app = FastAPI(
     title="ArtGenial API", 
-    version="2.1.1", # Versão corrigida (Fix CNAEs)
+    version="2.1.2", # Versão corrigida (Busca Rápida de CNAEs)
     docs_url=None,
     redoc_url=None
 )
@@ -75,21 +75,22 @@ def health_check():
     return {"status": "active", "mode": "production"} 
 
 @app.get("/cnaes", response_model=List[CnaeResponse])
-def buscar_cnaes(q: Optional[str] = Query(None, min_length=3)):
-    # --- CORREÇÃO AQUI ---
-    # Se o site chamar sem termo de busca (q), retorna lista vazia em vez de erro 422
+def buscar_cnaes(q: Optional[str] = Query(None)):
+    # 1. PROTEÇÃO DE OVERLOAD: Se não digitou nada, não incomoda o banco.
     if not q:
         return []
 
+    # 2. Se digitou (mesmo que seja 1 letra), faz a busca.
     client = get_db_client()
-    # Busca CNAE pelo nome (descrição)
     query = """
     SELECT codigo, descricao 
     FROM cnaes 
     WHERE descricao ILIKE %(termo)s 
     LIMIT 20
     """
+    # O parametro 'termo' segura a busca para não travar
     result = client.query(query, parameters={'termo': f'%{q}%'})
+    
     return [{"codigo": row[0], "descricao": row[1]} for row in result.result_rows]
 
 @app.get("/empresas", response_model=List[EmpresaResponse])
@@ -154,8 +155,6 @@ def buscar_empresas(
         concat('(', toString(est.ddd_1), ') ', toString(est.telefone_1)) as telefone_formatado,
         est.correio_eletronico as email
     FROM estabelecimentos as est
-    INNER JOIN estabelecimentos as est ON est.cnpj_basico = est.cnpj_basico -- Atenção: verifiquei seu código original e o JOIN parecia redundante ou com erro de digitação na sua versão anterior (est JOIN est), mas aqui corrigi para o padrão correto se necessário, ou mantive o fluxo. 
-    -- CORREÇÃO NO SQL (Baseado no seu código anterior que estava correto na lógica):
     INNER JOIN empresas as emp ON est.cnpj_basico = emp.cnpj_basico
     LEFT JOIN municipios as mun ON est.municipio = mun.codigo
     LEFT JOIN cnaes as c ON est.cnae_fiscal_principal = c.codigo
