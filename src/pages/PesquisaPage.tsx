@@ -10,23 +10,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Search, X, Building2 } from 'lucide-react';
-
-// Mock CNAE data for autocomplete
-const cnaeData = [
-  { code: '8630-5/04', description: 'Atividade Odontológica' },
-  { code: '5611-2/01', description: 'Restaurantes e similares' },
-  { code: '6911-7/01', description: 'Serviços advocatícios' },
-  { code: '8630-5/01', description: 'Atividade médica ambulatorial com recursos para realização de procedimentos cirúrgicos' },
-  { code: '4781-4/00', description: 'Comércio varejista de artigos do vestuário e acessórios' },
-  { code: '4712-1/00', description: 'Comércio varejista de mercadorias em geral, com predominância de produtos alimentícios - minimercados, mercearias e armazéns' },
-  { code: '9602-5/01', description: 'Cabeleireiros, manicure e pedicure' },
-  { code: '4520-0/01', description: 'Serviços de manutenção e reparação mecânica de veículos automotores' },
-  { code: '4771-7/01', description: 'Comércio varejista de produtos farmacêuticos, sem manipulação de fórmulas' },
-  { code: '8511-2/00', description: 'Educação infantil - creche' },
-  { code: '5620-1/01', description: 'Fornecimento de alimentos preparados preponderantemente para empresas' },
-  { code: '6399-2/00', description: 'Outras atividades de prestação de serviços de informação não especificadas anteriormente' },
-];
+import { Search, X, Building2, Loader2 } from 'lucide-react';
+import { useBuscaEmpresas, Cnae } from '@/hooks/useBuscaEmpresas';
 
 const estados = [
   'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 
@@ -34,14 +19,9 @@ const estados = [
   'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'
 ];
 
-interface SelectedCnae {
-  code: string;
-  description: string;
-}
-
 export default function PesquisaPage() {
   const [searchValue, setSearchValue] = useState('');
-  const [selectedCnaes, setSelectedCnaes] = useState<SelectedCnae[]>([]);
+  const [selectedCnaes, setSelectedCnaes] = useState<Cnae[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [estado, setEstado] = useState<string>('');
   const [cidade, setCidade] = useState('');
@@ -49,12 +29,13 @@ export default function PesquisaPage() {
   const inputRef = useRef<HTMLInputElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
 
+  // Use the custom hook for fetching CNAEs
+  const { isLoading, error, searchCnaes } = useBuscaEmpresas();
+
   // Filter suggestions based on input
-  const filteredSuggestions = cnaeData.filter(
-    (cnae) =>
-      (cnae.description.toLowerCase().includes(searchValue.toLowerCase()) ||
-        cnae.code.includes(searchValue)) &&
-      !selectedCnaes.find((s) => s.code === cnae.code)
+  const filteredSuggestions = searchCnaes(
+    searchValue,
+    selectedCnaes.map((c) => c.code)
   );
 
   // Handle clicking outside to close suggestions
@@ -74,7 +55,7 @@ export default function PesquisaPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleSelectCnae = (cnae: SelectedCnae) => {
+  const handleSelectCnae = (cnae: Cnae) => {
     setSelectedCnaes([...selectedCnaes, cnae]);
     setSearchValue('');
     setShowSuggestions(false);
@@ -116,7 +97,11 @@ export default function PesquisaPage() {
           <div className="relative mb-6">
             {/* Main Search Input */}
             <div className="relative flex items-center gap-2 p-3 rounded-xl border border-border bg-card shadow-sm focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary transition-all">
-              <Search className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+              {isLoading ? (
+                <Loader2 className="w-5 h-5 text-muted-foreground flex-shrink-0 animate-spin" />
+              ) : (
+                <Search className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+              )}
               
               {/* Selected Tags */}
               <div className="flex flex-wrap gap-2 flex-1">
@@ -156,6 +141,13 @@ export default function PesquisaPage() {
                 />
               </div>
             </div>
+
+            {/* Error Message */}
+            {error && (
+              <p className="text-sm text-destructive mt-2">
+                {error} - Usando dados offline.
+              </p>
+            )}
 
             {/* Autocomplete Suggestions */}
             {showSuggestions && searchValue.length > 0 && filteredSuggestions.length > 0 && (
