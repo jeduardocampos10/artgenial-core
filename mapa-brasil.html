@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Mapa Brasil + Nova Iguaçu (contorno real)</title>
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+
+  <style>
+    body { margin: 0; }
+    #map { height: 100vh; width: 100vw; }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <script>
+    const map = L.map("map", {
+      center: [-22.76, -43.45],
+      zoom: 10,
+      minZoom: 4,
+      maxZoom: 18
+    });
+
+    // Base map
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: "&copy; OpenStreetMap"
+    }).addTo(map);
+
+    // 🇧🇷 Contorno do Brasil (linha verde)
+    fetch("https://raw.githubusercontent.com/johan/world.geo.json/master/countries/BRA.geo.json")
+      .then(res => res.json())
+      .then(geo => {
+        L.geoJSON(geo, {
+          style: {
+            color: "#00ff66",
+            weight: 3,
+            opacity: 0.9,
+            fillOpacity: 0
+          }
+        }).addTo(map);
+      });
+
+    // 📍 Pins
+    const locais = [
+      { nome: "Nova Iguaçu", lat: -22.7592, lng: -43.4513 },
+      { nome: "Duque de Caxias", lat: -22.7856, lng: -43.3117 },
+      { nome: "Barra da Tijuca", lat: -23.0004, lng: -43.3659 },
+      { nome: "Tijuca", lat: -22.9246, lng: -43.2322 },
+      { nome: "Leblon", lat: -22.9846, lng: -43.2230 },
+      { nome: "Ipanema", lat: -22.9840, lng: -43.1983 },
+      { nome: "Campo Grande (RJ)", lat: -22.9036, lng: -43.5607 }
+    ];
+
+    locais.forEach(l => {
+      L.marker([l.lat, l.lng])
+        .addTo(map)
+        .bindPopup(`<b>${l.nome}</b>`);
+    });
+
+    // ============================
+    // 🟢 Contorno REAL Nova Iguaçu (OSM via Overpass)
+    // ============================
+
+    async function carregarNovaIguacu() {
+      // Query Overpass: pega a relação administrativa do município
+      const query = `
+        [out:json][timeout:25];
+        area["name"="Brasil"]["boundary"="administrative"]->.br;
+        (
+          relation
+            ["boundary"="administrative"]
+            ["admin_level"="8"]
+            ["name"="Nova Iguaçu"]
+            (area.br);
+        );
+        out body;
+        >;
+        out skel qt;
+      `;
+
+      const url = "https://overpass-api.de/api/interpreter";
+
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain" },
+        body: query
+      });
+
+      const data = await res.json();
+
+      // Converte Overpass JSON -> GeoJSON (sem libs externas)
+      const geojson = overpassToGeoJSON(data);
+
+      const layer = L.geoJSON(geojson, {
+        style: {
+          color: "#00ff66",
+          weight: 4,
+          opacity: 1,
+          fillColor: "#00ff66",
+          fillOpacity: 0.12
+        }
+      }).addTo(map);
+
+      map.fitBounds(layer.getBounds());
+
+      layer.bindPopup("<b>Município de Nova Iguaçu</b>");
+    }
+
+    // Conversor simples Overpass -> GeoJSON (suficiente pra boundary)
+    function overpassToGeoJSON(osm) {
+      const nodes = new Map();
+      const ways = new Map();
+
+      osm.elements.forEach(el => {
+        if (el.type === "node") nodes.set(el.id, [el.lon, el.lat]);
+        if (el.type === "way") ways.set(el.id, el.nodes);
+      });
+
+      // Pega relations (boundary)
+      const features = [];
+
+      osm.elements
+        .filter(el => el.type === "relation")
+        .forEach(rel => {
+          // monta multipolígono
+          const rings = [];
+
+          rel.members
+            .filter(m => m.type === "way")
+            .forEach(m => {
+              const wayNodes = ways.get(m.ref);
+              if (!wayNodes) return;
+
+              const coords = wayNodes
+                .map(nid => nodes.get(nid))
+                .filter(Boolean);
+
+              if (coords.length > 3) rings.push(coords);
+            });
+
+          // GeoJSON multipolygon (pode vir com vários rings)
+          features.push({
+            type: "Feature",
+            properties: rel.tags || {},
+            geometry: {
+              type: "MultiPolygon",
+              coordinates: [rings.map(r => r)]
+            }
+          });
+        });
+
+      return {
+        type: "FeatureCollection",
+        features
+      };
+    }
+
+    carregarNovaIguacu().catch(err => {
+      console.error(err);
+      alert("Não consegui carregar o contorno de Nova Iguaçu (Overpass). Tenta novamente ou eu te passo um GeoJSON fixo.");
+    });
+  </script>
+</body>
+</html>

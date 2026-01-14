@@ -12,7 +12,7 @@ load_dotenv()
 
 app = FastAPI(
     title="ArtGenial API", 
-    version="2.1.2", # Versão corrigida (Busca Rápida de CNAEs)
+    version="2.1.3", # Versão Corrigida (Sintaxe SQL ClickHouse)
     docs_url=None,
     redoc_url=None
 )
@@ -51,6 +51,12 @@ def get_db_client():
         print(f"🚨 ERRO CRÍTICO DE CONEXÃO: {e}")
         raise HTTPException(status_code=500, detail="Serviço indisponível temporariamente.")
 
+# --- HELPER: Limpeza de SQL (Evitar Injection simples) ---
+def safe_sql(valor):
+    if valor:
+        return str(valor).replace("'", "''") # Escapa aspas simples para ClickHouse
+    return ""
+
 # --- MODELOS ---
 class EmpresaResponse(BaseModel):
     razao_social: str
@@ -76,26 +82,31 @@ def health_check():
 
 @app.get("/cnaes", response_model=List[CnaeResponse])
 def buscar_cnaes(q: Optional[str] = Query(None)):
-    # 1. PROTEÇÃO DE OVERLOAD: Se não digitou nada, não incomoda o banco.
+    # 1. Se não digitou nada, retorna lista vazia (economiza processamento)
     if not q:
         return []
 
-    # 2. Se digitou (mesmo que seja 1 letra), faz a busca.
     client = get_db_client()
-    query = """
+    
+    # Sintaxe corrigida: Usando f-string direta (ClickHouse friendly)
+    termo_seguro = safe_sql(q)
+    query = f"""
     SELECT codigo, descricao 
     FROM cnaes 
-    WHERE descricao ILIKE %(termo)s 
+    WHERE descricao ILIKE '%{termo_seguro}%' 
     LIMIT 20
     """
-    # O parametro 'termo' segura a busca para não travar
-    result = client.query(query, parameters={'termo': f'%{q}%'})
     
-    return [{"codigo": row[0], "descricao": row[1]} for row in result.result_rows]
+    try:
+        result = client.query(query)
+        return [{"codigo": row[0], "descricao": row[1]} for row in result.result_rows]
+    except Exception as e:
+        print(f"Erro na busca de CNAEs: {e}")
+        # Retorna lista vazia em caso de erro, mas loga no servidor
+        return []
 
 @app.get("/empresas", response_model=List[EmpresaResponse])
 def buscar_empresas(
-    # AGORA ACEITA UMA LISTA DE CNAES (ex: ?cnaes=123&cnaes=456)
     cnaes: Optional[List[str]] = Query(None), 
     cidade: Optional[str] = None,
     uf: Optional[str] = None,
@@ -109,39 +120,33 @@ def buscar_empresas(
     
     # Começa filtrando apenas empresas ATIVAS
     conditions = ["est.situacao_cadastral = '02'"]
-    params = {}
 
     # 1. TRATAMENTO INTELIGENTE DOS CNAES
     if cnaes:
-        # Limpa cada CNAE da lista (remove traço, barra, ponto)
         lista_limpa = [re.sub(r'\D', '', c) for c in cnaes]
-        # Remove vazios
         lista_limpa = [c for c in lista_limpa if c]
         
         if lista_limpa:
-            # Usa o operador IN para buscar QUALQUER um dos selecionados
-            conditions.append("est.cnae_fiscal_principal IN %(cnaes_lista)s")
-            params['cnaes_lista'] = lista_limpa
+            # Formata a lista para SQL: ('123', '456')
+            lista_str = ", ".join([f"'{c}'" for c in lista_limpa])
+            conditions.append(f"est.cnae_fiscal_principal IN ({lista_str})")
 
     if uf:
-        conditions.append("est.uf = %(uf)s")
-        params['uf'] = uf.upper()
+        conditions.append(f"est.uf = '{safe_sql(uf.upper())}'")
     
     if bairro:
-        conditions.append("est.bairro ILIKE %(bairro)s")
-        params['bairro'] = f"%{bairro}%"
+        conditions.append(f"est.bairro ILIKE '%{safe_sql(bairro)}%'")
         
     if cidade:
-        conditions.append("mun.descricao ILIKE %(cidade)s")
-        params['cidade'] = f"%{cidade}%"
+        conditions.append(f"mun.descricao ILIKE '%{safe_sql(cidade)}%'")
 
     if termo:
-        conditions.append("(est.nome_fantasia ILIKE %(termo)s OR emp.razao_social ILIKE %(termo)s)")
-        params['termo'] = f"%{termo}%"
+        t = safe_sql(termo)
+        conditions.append(f"(est.nome_fantasia ILIKE '%{t}%' OR emp.razao_social ILIKE '%{t}%')")
 
     where_clause = " AND ".join(conditions)
     
-    # Query Otimizada
+    # Query Principal
     sql = f"""
     SELECT 
         emp.razao_social,
@@ -163,12 +168,11 @@ def buscar_empresas(
     """
     
     try:
-        result = client.query(sql, parameters=params)
+        result = client.query(sql)
         
         lista_empresas = []
         for row in result.result_rows:
             fone = row[8]
-            # Formatação visual do telefone
             if fone == "() " or fone == "()": fone = "Não informado"
 
             lista_empresas.append({
@@ -187,7 +191,8 @@ def buscar_empresas(
 
     except Exception as e:
         print(f"Erro interno logado: {e}")
-        raise HTTPException(status_code=500, detail="Erro ao processar busca.")
+        # Aqui lançamos 500 para você ver o erro se acontecer
+        raise HTTPException(status_code=500, detail=f"Erro no Banco: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn

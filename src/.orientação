@@ -6,7 +6,10 @@ Sempre que mexer no Lovable, antes de trabalhar no VS Code, rode:
  2 - npm run build
  3 - Jogar na Hostinger /app
 Seu VS Code ➡️ Hostinger: NÃO é automático.
-
+sempre que atualizar o site
+git add .
+git commit -m "fix cnae search"
+git push
 
 Você sempre terá que rodar npm run build e arrastar a pasta dist para a Hostinger manualmente (a não ser que configuremos uma automação avançada no futuro).
 
