@@ -5,6 +5,8 @@ import (
 	"strings"
 	"testing"
 
+	"evo-ai-core-service/internal/utils/stringutils"
+	"evo-ai-core-service/pkg/agent/model"
 	mcpmodel "evo-ai-core-service/pkg/mcp_server/model"
 
 	"github.com/google/uuid"
@@ -120,5 +122,56 @@ func TestNoCredentialRefsKeyWhenNoneGiven(t *testing.T) {
 	}
 	if _, present := processed[0]["credential_refs"]; present {
 		t.Error("an empty credential_refs was invented where the request had none")
+	}
+}
+
+func TestConversationSkillConfigurationIsPreserved(t *testing.T) {
+	agent := &model.Agent{
+		Type: model.AgentTypeLLM,
+		Config: `{
+			"human_service_skill_enabled": true,
+			"elite_sales_skill_enabled": true,
+			"reception_triage_skill_enabled": true,
+			"intent_router_skill_enabled": true,
+			"concern_intelligence_skill_enabled": true,
+			"service_recovery_skill_enabled": true,
+			"cancellation_retention_skill_enabled": true,
+			"customer_success_growth_skill_enabled": true,
+			"customer_journey_skill_enabled": true,
+			"scope_guard_skill_enabled": true,
+			"lead_pipeline_management_skill_enabled": true,
+			"conversation_skills": ["artgenial.human-service.v1", "artgenial.elite-sales.v1"]
+		}`,
+	}
+
+	if err := processorWithDeadCatalog().ProcessAgentConfig(context.Background(), agent, nil); err != nil {
+		t.Fatalf("create rejected: %v", err)
+	}
+
+	processed := stringutils.JSONToInterfaceMap(agent.Config)
+	if processed["human_service_skill_enabled"] != true {
+		t.Fatalf("human service toggle was not preserved: %v", processed)
+	}
+	if processed["elite_sales_skill_enabled"] != true {
+		t.Fatalf("elite sales toggle was not preserved: %v", processed)
+	}
+	for _, toggle := range []string{
+		"reception_triage_skill_enabled",
+		"intent_router_skill_enabled",
+		"concern_intelligence_skill_enabled",
+		"service_recovery_skill_enabled",
+		"cancellation_retention_skill_enabled",
+		"customer_success_growth_skill_enabled",
+		"customer_journey_skill_enabled",
+		"scope_guard_skill_enabled",
+		"lead_pipeline_management_skill_enabled",
+	} {
+		if processed[toggle] != true {
+			t.Fatalf("%s was not preserved: %v", toggle, processed)
+		}
+	}
+	skills, ok := processed["conversation_skills"].([]interface{})
+	if !ok || len(skills) != 2 || skills[0] != "artgenial.human-service.v1" || skills[1] != "artgenial.elite-sales.v1" {
+		t.Fatalf("versioned conversation skills were not preserved: %v", processed["conversation_skills"])
 	}
 }
