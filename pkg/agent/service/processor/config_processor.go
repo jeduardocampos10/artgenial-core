@@ -84,6 +84,8 @@ func (p ConfigProcessor) ProcessAgentConfig(ctx context.Context, agent *model.Ag
 		"cancellation_retention_skill_enabled",
 		"customer_success_growth_skill_enabled",
 		"customer_journey_skill_enabled",
+		"scope_guard_skill_enabled",
+		"lead_pipeline_management_skill_enabled",
 		"conversation_skills",
 		"use_emojis",
 		"allow_reminders",

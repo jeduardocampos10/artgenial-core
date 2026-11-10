@@ -138,6 +138,8 @@ func TestConversationSkillConfigurationIsPreserved(t *testing.T) {
 			"cancellation_retention_skill_enabled": true,
 			"customer_success_growth_skill_enabled": true,
 			"customer_journey_skill_enabled": true,
+			"scope_guard_skill_enabled": true,
+			"lead_pipeline_management_skill_enabled": true,
 			"conversation_skills": ["artgenial.human-service.v1", "artgenial.elite-sales.v1"]
 		}`,
 	}
@@ -161,6 +163,8 @@ func TestConversationSkillConfigurationIsPreserved(t *testing.T) {
 		"cancellation_retention_skill_enabled",
 		"customer_success_growth_skill_enabled",
 		"customer_journey_skill_enabled",
+		"scope_guard_skill_enabled",
+		"lead_pipeline_management_skill_enabled",
 	} {
 		if processed[toggle] != true {
 			t.Fatalf("%s was not preserved: %v", toggle, processed)
